@@ -7,3 +7,4 @@ BOM
 -1 red led
 -1 green led
 -1 non i2c 16x2 lcd
+-1 keyboard switch

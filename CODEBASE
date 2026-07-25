@@ -1,0 +1,145 @@
+#include <GxEPD2_BW.h>
+#include <Fonts/FreeSans9pt7b.h>
+
+GxEPD2_BW<GxEPD2_154_D67, GxEPD2_154_D67::HEIGHT> display(GxEPD2_154_D67(5, 21, 22, 19));
+
+const int redPin = 26;
+const int greenPin = 25;
+const int buttonPin = 27;
+
+unsigned long startTime = 0;
+unsigned long reactionTime = 0;
+unsigned long timerEvent = 0;
+
+
+bool waitingForReaction = false;
+enum State { IDLE, WAITING_DELAY, READY_TO_REACT, SHOWING_RESULT};
+State currentState = IDLE;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(redPin, OUTPUT); 
+  pinMode(greenPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  digitalWrite(redPin, LOW);
+  digitalWrite(greenPin, LOW);
+
+  display.init(115200);
+  display.setRotation(1);
+
+  drawSplashScreen();
+}
+
+void loop() {
+  switch (currentState) {
+    case IDLE:
+      digitalWrite(redPin, LOW);
+      digitalWrite(greenPin, LOW);
+
+      if (digitalRead(buttonPin) == LOW) {
+        delay(50);
+        if (digitalRead(buttonPin) == LOW) {
+          currentState = WAITING_DELAY;
+          digitalWrite(redPin, HIGH);
+          digitalWrite(greenPin, LOW);
+
+          drawWaitingScreen();
+          timerEvent = millis() + random(2000, 5000);
+        }
+      }
+      break;
+
+    case WAITING_DELAY:
+      if (digitalRead(buttonPin) == LOW) {
+        delay(50);
+        if (digitalRead(buttonPin) == LOW) {
+          digitalWrite(redPin, LOW);
+          currentState = IDLE;
+          drawFalseStartScreen();
+          delay(1000);
+          drawSplashScreen();
+        }
+      }
+
+      if (millis() >= timerEvent) {
+        digitalWrite(redPin, LOW);
+        digitalWrite(greenPin, HIGH);
+        startTime = micros();
+        currentState = READY_TO_REACT;
+      }
+      break;
+
+    case READY_TO_REACT:
+      if (digitalRead(buttonPin) == LOW) {
+        delay(10);
+        if (digitalRead(buttonPin) == LOW) {
+          unsigned long endTime = micros();
+          reactionTime = endTime - startTime;
+
+          digitalWrite(greenPin, LOW);
+          currentState = SHOWING_RESULT;
+
+          drawResultScreen(reactionTime);
+          delay(3000);
+          currentState = IDLE;
+          drawSplashScreen();
+        }
+      }
+      break;
+
+    case SHOWING_RESULT:
+      break;
+  }
+}
+
+void drawSplashScreen() {
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(10, 35);
+    display.print("Reaction Time");
+    display.setCursor(10, 65);
+    display.print("Tester");
+    display.setCursor(10, 95);
+    display.print("Press to start!");
+  } while (display.nextPage());
+}
+void drawWaitingScreen() {
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(10, 50);
+    display.print("Get ready...");
+  } while (display.nextPage());
+}
+
+void drawFalseStartScreen() {
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(10, 50);
+    display.print("Too early!");
+  } while (display.nextPage());
+}
+
+void drawResultScreen(unsigned long timeUs) {
+  float timeMs = timeUs / 1000.0;
+  display.firstPage();
+  do {
+    display.fillScreen(GxEPD_WHITE);
+    display.setTextColor(GxEPD_BLACK);
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(10, 40);
+    display.print("Reaction Time:");
+    display.setCursor(10, 80);
+    display.print(timeMs, 1);
+    display.print(" ms");
+  } while (display.nextPage());
+}

@@ -52,8 +52,10 @@ void loop() {
           currentState = WAITING_DELAY;
           digitalWrite(redPin, HIGH);
           digitalWrite(greenPin, LOW);
-          drawWaitingScreen();
+          
+          // Set timer FIRST before the slow e-paper draw blocks execution
           timerEvent = millis() + random(2000, 5000);
+          drawWaitingScreen();
         }
       }
       break;
